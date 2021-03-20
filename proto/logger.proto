@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package logger;
+
+message Metric {
+    string identifier = 1;
+
+    enum ValueType {
+        ValueType_UNKNOWN = 0;
+        ValueType_DOUBLE = 1;
+        ValueType_STRING = 2;
+    }
+    ValueType value = 2;
+}
+
+message RecordMetricsRequest {
+    repeated Metric metrics = 1;
+}
+
+message RecordMetricsResponse {
+}
+
+service LoggerService {
+    rpc RecordMetric(RecordMetricsRequest)
+        returns (RecordMetricsResponse);
+}

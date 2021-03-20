@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS Posts;
+
+CREATE TABLE Posts (
+    Id TEXT PRIMARY KEY,
+    Post TEXT
+);
