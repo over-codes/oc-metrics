@@ -10,7 +10,7 @@ use oc_metrics::{
         Server,
         proto::{
             FILE_DESCRIPTOR_SET,
-            logger_service_server::LoggerServiceServer,
+            metrics_service_server::MetricsServiceServer,
         },
 }   ,
 };
@@ -33,7 +33,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let db = SqliteDatabase::new(&dbpath)?;
     db.setup()?;
 
-    let logger_service = LoggerServiceServer::new(Server::new(db));
+    let logger_service = MetricsServiceServer::new(Server::new(db));
 
     transport::Server::builder()
         .add_service(reflection_service)

@@ -12,9 +12,9 @@ use crate::dal::{
 };
 
 pub mod proto {
-    tonic::include_proto!("logger");
+    tonic::include_proto!("metrics_service");
     pub const FILE_DESCRIPTOR_SET: &'static [u8] =
-        tonic::include_file_descriptor_set!("logger_descriptor");
+        tonic::include_file_descriptor_set!("metrics_service_descriptor");
 }
 
 use proto::{
@@ -22,7 +22,7 @@ use proto::{
     RecordMetricsRequest,
     LoadMetricsResponse,
     LoadMetricsRequest,
-    logger_service_server::LoggerService,
+    metrics_service_server::MetricsService,
 };
 
 #[derive(Debug, Default)]
@@ -46,8 +46,8 @@ impl From<DatabaseError> for Status {
 }
 
 #[tonic::async_trait]
-impl<D: Database + 'static> LoggerService for Server<D> {
-    async fn record_metric(&self, request: Request<RecordMetricsRequest>)
+impl<D: Database + 'static> MetricsService for Server<D> {
+    async fn record_metrics(&self, request: Request<RecordMetricsRequest>)
         -> Result<Response<RecordMetricsResponse>, Status> {
         let when = Utc::now();
         for metric in &request.get_ref().metrics {
@@ -65,7 +65,7 @@ impl<D: Database + 'static> LoggerService for Server<D> {
         Ok(Response::new(RecordMetricsResponse{}))
     }
 
-    async fn load_metric(&self, request: Request<LoadMetricsRequest>)
+    async fn load_metrics(&self, request: Request<LoadMetricsRequest>)
         -> Result<Response<LoadMetricsResponse>, Status> {
         let req = request.get_ref();
         let mut metrics = vec!();

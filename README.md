@@ -5,6 +5,23 @@ Metrics are expected (but not enforced) to be of the form: `service.qualfifier.n
 `hosts.aura.cpu_load`). It is optimized to search for metrics based on a prefix, so we can
 then query for all metrics in the last 5 days matching `hosts.aura`.
 
+## Proto files
+
+Proto files live in [oc-metrics-proto] and are pulled in as a git submodule. During one-time
+setup, run:
+
+```
+git submodule init
+```
+
+And to grab the latest proto definitions, use:
+
+```
+git submodule update
+```
+
+[oc-metrics-proto]: https://git/overcodes/oc-metrics-proto 
+
 ## Configuration
 
 Two environment variables are read:
