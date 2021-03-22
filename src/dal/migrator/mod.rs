@@ -17,7 +17,7 @@
 //! 
 //! // Include a migrator implementation from this module;
 //! // we use sqlite here
-//! use rust_grpc_test::dal::migrator::{
+//! use oc_metrics::dal::migrator::{
 //!     migrate,
 //!     sqlite::SqliteMigrator,
 //! };

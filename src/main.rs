@@ -1,6 +1,7 @@
 use tonic::{transport};
+use log::{info};
 
-use rust_grpc_test::{
+use oc_metrics::{
     dal::{
         Database,
         sqlite::SqliteDatabase,
@@ -18,8 +19,10 @@ use rust_grpc_test::{
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // grab env variables
     env_logger::init();
-    let dbpath = std::env::var("DBPATH").unwrap_or(":memory:".to_string());
-    let addr = "[::1]:50051".parse()?;
+    let dbpath = std::env::var("DBPATH").unwrap_or(":memory:".into());
+    let addr = std::env::var("LISTEN").unwrap_or("[::1]:50051".into());
+    let addr = addr.parse()?;
+    info!("Starting server on port {} with database {}", addr, dbpath);
 
     // build reflection service
     let reflection_service = tonic_reflection::server::Builder::configure()

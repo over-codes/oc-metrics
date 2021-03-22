@@ -75,7 +75,7 @@ impl Database for SqliteDatabase {
         };
         self.conn.lock()?.execute("
             INSERT INTO Metrics (name, time, value_type, dvalue, tvalue) VALUES (?1, ?2, ?3, ?4, ?5)
-        ", params![metric.name, metric.when.to_rfc3339(), typ, dvalue, tvalue])?;
+        ", params![metric.name, metric.when.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true), typ, dvalue, tvalue])?;
         Ok(())
     }
 
@@ -184,7 +184,7 @@ mod tests {
         let valid = Utc.ymd(2019, 1, 26).and_hms_micro(18, 30, 9, 453_829);
         let after =  Utc.ymd(2020, 1, 26).and_hms_micro(18, 30, 9, 453_829);
         let mut want_metrics = vec!();
-        for date_time in vec!(before, valid, after) {
+        for date_time in vec!(before.checked_sub_signed(chrono::Duration::days(1)).unwrap(), valid, after) {
             let metric = Metric{
                 name: Cow::Borrowed("myservice.cpu_time"),
                 when: Cow::Owned(date_time),

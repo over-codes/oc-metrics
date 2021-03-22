@@ -11,5 +11,6 @@ Two environment variables are read:
 
 - `DBPATH` -- path the to sqlite database to record metrics in; `:memory:` will use an in-memory database
 - `RUST_LOG` -- log verbosity; see the [env_logger] crate for more information
+- `LISTEN` -- the address to listen on; defaults to `[::1]:50051`
 
 [env_logger]: https://crates.io/crates/env_logger
