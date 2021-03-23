@@ -19,8 +19,8 @@ use oc_metrics::{
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // grab env variables
     env_logger::init();
-    let dbpath = std::env::var("DBPATH").unwrap_or(":memory:".into());
-    let addr = std::env::var("LISTEN").unwrap_or("[::1]:50051".into());
+    let dbpath = std::env::var("DBPATH").unwrap_or_else(|_| ":memory:".into());
+    let addr = std::env::var("LISTEN").unwrap_or_else(|_| "[::1]:50051".into());
     let addr = addr.parse()?;
     info!("Starting server on port {} with database {}", addr, dbpath);
 

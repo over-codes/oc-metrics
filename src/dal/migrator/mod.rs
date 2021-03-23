@@ -82,7 +82,7 @@ pub fn migrate<E: RustEmbed, A: Applier>(applier: &A) -> Result<()> {
             }
         } else {
             // we are applying this migration!
-            let raw = E::get(&files[i]).ok_or(MigrationError(format!(
+            let raw = E::get(&files[i]).ok_or_else(|| MigrationError(format!(
                 "Expected to find file {} in embedded files; did not",
                 files[i],
             )))?;
