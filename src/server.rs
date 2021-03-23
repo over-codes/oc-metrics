@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-
+use std::time::{UNIX_EPOCH, Duration};
 use log::{warn};
 use chrono::prelude::*;
 
@@ -54,7 +54,7 @@ impl<D: Database + 'static> MetricsService for Server<D> {
             let metric_value = match &metric.value {
                 Some(proto::metric::Value::DoubleValue(val)) => MetricValue::Double(*val),
                 Some(proto::metric::Value::StringValue(val)) => MetricValue::String(Cow::Borrowed(val)),
-                _ => panic!("huh"),
+                None => return Err(Status::unknown("Did you ask for a metric with no value? How very foolish of you!")),
             };
             self.db.write_metric(&Metric{
                 name: Cow::Borrowed(&metric.identifier),
@@ -69,7 +69,19 @@ impl<D: Database + 'static> MetricsService for Server<D> {
         -> Result<Response<LoadMetricsResponse>, Status> {
         let req = request.get_ref();
         let mut metrics = vec!();
-        for metric in self.db.read_metrics(&req.prefix, None, None)? {
+        let mut start = None;
+        let mut stop = None;
+        if let Some(range) = &req.time_range {
+            if let Some(start_proto) = &range.start {
+                let d = UNIX_EPOCH + Duration::from_secs(start_proto.seconds as u64) + Duration::from_nanos(start_proto.nanos as u64);
+                start = Some(DateTime::from(d));
+            }
+            if let Some(stop_proto) = &range.stop {
+                let d = UNIX_EPOCH + Duration::from_secs(stop_proto.seconds as u64) + Duration::from_nanos(stop_proto.nanos as u64);
+                stop = Some(DateTime::from(d));
+            }
+        }
+        for metric in self.db.read_metrics(&req.prefix, start.as_ref(), stop.as_ref())? {
             let value = match metric.value {
                 MetricValue::String(v) => proto::metric::Value::StringValue(v.into_owned()),
                 MetricValue::Double(v) => proto::metric::Value::DoubleValue(v),
