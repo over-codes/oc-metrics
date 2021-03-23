@@ -1,5 +1,9 @@
-use std::borrow::Cow;
-use std::time::{UNIX_EPOCH, Duration};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    time::{UNIX_EPOCH, Duration},
+};
+
 use log::{warn};
 use chrono::prelude::*;
 
@@ -23,6 +27,12 @@ use proto::{
     LoadMetricsResponse,
     LoadMetricsRequest,
     metrics_service_server::MetricsService,
+    metric::Value as ProtoValue,
+    compressed_metric::{
+        time_value::Value as CompressedValue,
+        TimeValue,
+    },
+    
 };
 
 #[derive(Debug, Default)]
@@ -52,8 +62,8 @@ impl<D: Database + 'static> MetricsService for Server<D> {
         let when = Utc::now();
         for metric in &request.get_ref().metrics {
             let metric_value = match &metric.value {
-                Some(proto::metric::Value::DoubleValue(val)) => MetricValue::Double(*val),
-                Some(proto::metric::Value::StringValue(val)) => MetricValue::String(Cow::Borrowed(val)),
+                Some(ProtoValue::DoubleValue(val)) => MetricValue::Double(*val),
+                Some(ProtoValue::StringValue(val)) => MetricValue::String(Cow::Borrowed(val)),
                 None => return Err(Status::unknown("Did you ask for a metric with no value? How very foolish of you!")),
             };
             self.db.write_metric(&Metric{
@@ -68,7 +78,6 @@ impl<D: Database + 'static> MetricsService for Server<D> {
     async fn load_metrics(&self, request: Request<LoadMetricsRequest>)
         -> Result<Response<LoadMetricsResponse>, Status> {
         let req = request.get_ref();
-        let mut metrics = vec!();
         let mut start = None;
         let mut stop = None;
         if let Some(range) = &req.time_range {
@@ -81,21 +90,30 @@ impl<D: Database + 'static> MetricsService for Server<D> {
                 stop = Some(DateTime::from(d));
             }
         }
+        let mut mapping: HashMap<Cow<'_, str>, Vec<TimeValue>> = HashMap::default();
         for metric in self.db.read_metrics(&req.prefix, start.as_ref(), stop.as_ref())? {
+            if !mapping.contains_key(&metric.name) {
+                mapping.insert(metric.name.clone(), vec!());
+            }
             let value = match metric.value {
-                MetricValue::String(v) => proto::metric::Value::StringValue(v.into_owned()),
-                MetricValue::Double(v) => proto::metric::Value::DoubleValue(v),
+                MetricValue::String(v) => CompressedValue::StringValue(v.into_owned()),
+                MetricValue::Double(v) => CompressedValue::DoubleValue(v),
             };
             let when = metric.when.into_owned();
-            let pmetric = proto::Metric{
-                identifier: metric.name.into_owned(),
+            mapping.get_mut(&metric.name).unwrap().push(TimeValue{
+                value: Some(value),
                 when: Some(prost_types::Timestamp{
                     seconds: when.timestamp(),
                     nanos: when.timestamp_subsec_nanos() as i32,
                 }),
-                value: Some(value),
-            };
-            metrics.push(pmetric);
+            });
+        }
+        let mut metrics = Vec::with_capacity(mapping.len());
+        for (key, value) in mapping {
+            metrics.push(proto::CompressedMetric{
+                identifier: key.to_string(),
+                time_values: value,
+            })
         }
         Ok(Response::new(LoadMetricsResponse{metrics}))
     }
