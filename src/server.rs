@@ -59,16 +59,22 @@ impl From<DatabaseError> for Status {
 impl<D: Database + 'static> MetricsService for Server<D> {
     async fn record_metrics(&self, request: Request<RecordMetricsRequest>)
         -> Result<Response<RecordMetricsResponse>, Status> {
-        let when = Utc::now();
+        let current_time: Cow<'_, DateTime<Utc>> = Cow::Owned(Utc::now());
         for metric in &request.get_ref().metrics {
             let metric_value = match &metric.value {
                 Some(ProtoValue::DoubleValue(val)) => MetricValue::Double(*val),
                 Some(ProtoValue::StringValue(val)) => MetricValue::String(Cow::Borrowed(val)),
                 None => return Err(Status::unknown("Did you ask for a metric with no value? How very foolish of you!")),
             };
+            let when = if let Some(w) = &metric.when {
+                let d = UNIX_EPOCH + Duration::from_secs(w.seconds as u64) + Duration::from_nanos(w.nanos as u64);
+                Cow::Owned(DateTime::from(d))
+            } else {
+                current_time.clone()
+            };
             self.db.write_metric(&Metric{
                 name: Cow::Borrowed(&metric.identifier),
-                when: Cow::Borrowed(&when),
+                when: when,
                 value: metric_value,
             })?;
         }
