@@ -96,8 +96,13 @@ impl<D: Database + 'static> MetricsService for Server<D> {
                 stop = Some(DateTime::from(d));
             }
         }
+        let limit = if req.max_time_values != 0 {
+            req.max_time_values as usize
+        } else {
+            1000
+        };
         let mut mapping: HashMap<Cow<'_, str>, Vec<TimeValue>> = HashMap::default();
-        for metric in self.db.read_metrics(&req.prefix, start.as_ref(), stop.as_ref())? {
+        for metric in self.db.read_metrics(&req.prefix, start.as_ref(), stop.as_ref(), limit)? {
             if !mapping.contains_key(&metric.name) {
                 mapping.insert(metric.name.clone(), vec!());
             }

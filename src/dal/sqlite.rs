@@ -79,7 +79,7 @@ impl Database for SqliteDatabase {
         Ok(())
     }
 
-    fn read_metrics<'a>(&'a self, prefix: &str, start: Option<&DateTime<Utc>>, stop: Option<&DateTime<Utc>>)
+    fn read_metrics<'a>(&'a self, prefix: &str, start: Option<&DateTime<Utc>>, stop: Option<&DateTime<Utc>>, limit: usize)
         -> Result<Vec<Metric<'a>>> {
         // prepare the query
         let mut query = "
@@ -109,6 +109,12 @@ impl Database for SqliteDatabase {
             stop_string = stop.to_rfc3339();
             params.push((":stop", &stop_string));
         };
+        query += "
+            ORDER BY t1.name, t1.time
+            LIMIT :limit
+        ";
+        let limit = limit as u32;
+        params.push((":limit", &limit));
         let conn = self.conn.lock()?;
         let mut stmt = conn.prepare(&query)?;
         let mut rows = stmt.query_named(params.as_slice())?;
@@ -170,7 +176,7 @@ mod tests {
             value: MetricValue::Double(23.0),
         };
         db.write_metric(&metric).unwrap();
-        let got_metrics = db.read_metrics("myservice.", None, None).unwrap();
+        let got_metrics = db.read_metrics("myservice.", None, None, 100).unwrap();
         assert_eq!(
             got_metrics,
             vec!(metric),
@@ -193,7 +199,7 @@ mod tests {
             db.write_metric(&metric).unwrap();
             want_metrics.push(metric);
         }
-        let got_metrics = db.read_metrics("myservice.", Some(&before), Some(&after)).unwrap();
+        let got_metrics = db.read_metrics("myservice.", Some(&before), Some(&after), 100).unwrap();
         assert_eq!(
             got_metrics,
             vec!(want_metrics[1].clone()),

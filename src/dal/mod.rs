@@ -44,6 +44,6 @@ pub trait Database: Send + Sync {
     fn setup(&self) -> Result<()>;
     fn write_metric(&self, metric: &Metric) -> Result<()>;
     /// reads metrics with exclusive time ranges
-    fn read_metrics<'a>(&'a self, prefix: &str, start: Option<&DateTime<Utc>>, stop: Option<&DateTime<Utc>>)
+    fn read_metrics<'a>(&'a self, prefix: &str, start: Option<&DateTime<Utc>>, stop: Option<&DateTime<Utc>>, limit: usize)
         -> Result<Vec<Metric<'a>>>;
 }
