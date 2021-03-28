@@ -13,6 +13,7 @@ use rusqlite::{
     Connection,
     ToSql,
     params,
+    named_params,
 };
 use rust_embed::RustEmbed;
 
@@ -136,6 +137,35 @@ impl Database for SqliteDatabase {
         }
         Ok(metrics)
     }
+
+    fn list_metrics<'a>(&'a self, prefix: &str) -> Result<Vec<(String, DateTime<Utc>)>> {
+
+        // prepare the query
+        let query = "
+            SELECT t1.name,
+                MAX(t1.time)
+            FROM Metrics t1
+            WHERE t1.name LIKE :prefix
+            GROUP BY t1.name
+        ".to_string();
+
+        let conn = self.conn.lock()?;
+        let mut stmt = conn.prepare(&query)?;
+        let prefix = &format!("{}%", prefix);
+        let mut rows = stmt.query_named(named_params!(
+            ":prefix": prefix,
+        ))?;
+        let mut metrics = vec!();
+        while let Some(row) = rows.next()? {
+            let date_time:String = row.get(1)?;
+            let date_time: DateTime<Utc> = DateTime::parse_from_rfc3339(&date_time)?.with_timezone(&Utc);
+            metrics.push((
+                row.get::<usize, String>(0)?,
+                date_time,
+            ))
+        }
+        Ok(metrics)
+    }
 }
 
 #[cfg(test)]
@@ -204,5 +234,21 @@ mod tests {
             got_metrics,
             vec!(want_metrics[1].clone()),
         )
+    }
+
+    #[test]
+    fn list_values() {
+        let db = testdb();
+        let date_time = Utc.ymd(2018, 1, 26).and_hms_micro(18, 30, 9, 453_829);
+        db.write_metric(&Metric{
+            name: Cow::Borrowed("myservice.cpu_time"),
+            when: Cow::Owned(date_time.clone()),
+            value: MetricValue::Double(23.0),
+        }).unwrap();
+
+        let matches = db.list_metrics("myservice.cpu_time").unwrap();
+        assert_eq!(matches, vec!(
+            ("myservice.cpu_time".to_string(), date_time),
+        ));
     }
 }

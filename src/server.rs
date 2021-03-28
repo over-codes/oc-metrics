@@ -26,7 +26,10 @@ use proto::{
     RecordMetricsRequest,
     LoadMetricsResponse,
     LoadMetricsRequest,
+    ListMetricsResponse,
+    ListMetricsRequest,
     metrics_service_server::MetricsService,
+    list_metrics_response::ListMetric,
     metric::Value as ProtoValue,
     compressed_metric::{
         time_value::Value as CompressedValue,
@@ -127,5 +130,23 @@ impl<D: Database + 'static> MetricsService for Server<D> {
             })
         }
         Ok(Response::new(LoadMetricsResponse{metrics}))
+    }
+
+
+    async fn list_metrics(&self, request: Request<ListMetricsRequest>)
+        -> Result<Response<ListMetricsResponse>, Status> {
+        let prefix = &request.get_ref().prefix;
+        let metrics = self.db.list_metrics(&prefix)?;
+        let mut metrics_list = vec!();
+        for (identifier, when) in metrics {
+            metrics_list.push(ListMetric{
+                identifier,
+                last_timestamp: Some(prost_types::Timestamp{
+                    seconds: when.timestamp(),
+                    nanos: when.timestamp_subsec_nanos() as i32,
+                }),
+            })
+        }
+        Ok(Response::new(ListMetricsResponse{metrics_list}))
     }
 }
